@@ -1,0 +1,50 @@
+[project]
+name = "poker-coach"
+version = "0.1.0"
+description = "Live Texas Hold'em coaching assistant: reads PokerTH screen via OCR, computes equity/pot odds/EV, explains best action."
+readme = "README.md"
+authors = [
+    { name = "Romeo Incardona", email = "romeo.incardona@gmail.com" }
+]
+requires-python = ">=3.12"
+dependencies = [
+    "mss>=9.0",
+    "opencv-python>=4.9",
+    "numpy>=1.26",
+    "pytesseract>=0.3.10",
+    "treys>=0.1.8",
+    "rich>=13.7",
+    "pydantic>=2.6",
+]
+
+[dependency-groups]
+dev = [
+    "pytest>=8.0",
+    "pytest-cov>=5.0",
+    "ruff>=0.6",
+    "mypy>=1.10",
+]
+
+[project.scripts]
+poker-coach = "poker_coach.main:main"
+
+[build-system]
+requires = ["uv_build>=0.11.6,<0.12.0"]
+build-backend = "uv_build"
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "W", "UP", "B", "SIM"]
+ignore = ["E501"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-ra --strict-markers"
+
+[tool.mypy]
+python_version = "3.12"
+strict = true
+ignore_missing_imports = true
