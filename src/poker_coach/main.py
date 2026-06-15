@@ -28,7 +28,7 @@ def main() -> None:
     )
     ap.add_argument(
         "--templates", "-t",
-        default="assets/card_templates",
+        default="assets/cards/pokerth/default",
         help="Directory of 52 card template PNGs.",
     )
     ap.add_argument("--monitor", "-m", type=int, default=1)

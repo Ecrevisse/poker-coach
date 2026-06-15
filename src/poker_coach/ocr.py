@@ -11,10 +11,14 @@ from .cards import Card
 _MATCH_THRESHOLD = 0.75
 
 
+_VALID_CARDS = {f"{r}{s}" for r in "23456789TJQKA" for s in "dhsc"}
+
+
 class CardRecognizer:
     """Template-match a card crop against 52 known templates.
 
-    Templates are PNGs named like `As.png`, `Td.png` in `templates_dir`.
+    Templates are BGR PNGs named like `As.png`, `Td.png` (rank + suit).
+    Color is preserved so red (h/d) vs black (s/c) is discriminative.
     """
 
     def __init__(self, templates_dir: Path) -> None:
@@ -23,21 +27,23 @@ class CardRecognizer:
         self._cv2 = cv2
         self.templates: dict[str, np.ndarray] = {}
         for f in sorted(Path(templates_dir).glob("*.png")):
-            img = cv2.imread(str(f), cv2.IMREAD_GRAYSCALE)
+            if f.stem not in _VALID_CARDS:
+                continue
+            img = cv2.imread(str(f), cv2.IMREAD_COLOR)
             if img is None:
                 continue
             self.templates[f.stem] = img
 
     def recognize(self, card_img: np.ndarray) -> Card | None:
-        if not self.templates:
+        if not self.templates or card_img.size == 0:
             return None
         cv2 = self._cv2
-        gray = cv2.cvtColor(card_img, cv2.COLOR_BGR2GRAY) if card_img.ndim == 3 else card_img
+        crop = card_img if card_img.ndim == 3 else cv2.cvtColor(card_img, cv2.COLOR_GRAY2BGR)
         best_score = -1.0
         best_name: str | None = None
         for name, tmpl in self.templates.items():
-            resized = cv2.resize(tmpl, (gray.shape[1], gray.shape[0]))
-            res = cv2.matchTemplate(gray, resized, cv2.TM_CCOEFF_NORMED)
+            resized = cv2.resize(tmpl, (crop.shape[1], crop.shape[0]))
+            res = cv2.matchTemplate(crop, resized, cv2.TM_CCOEFF_NORMED)
             score = float(res.max())
             if score > best_score:
                 best_score = score

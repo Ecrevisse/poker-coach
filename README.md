@@ -37,7 +37,7 @@ uv sync
 uv run poker-coach
 ```
 
-Requires a calibration JSON for your PokerTH window resolution in `calibration/` and 52 card templates in `assets/card_templates/`. See `docs/calibration.md` (TODO).
+Requires a calibration JSON for your PokerTH window resolution in `calibration/` and 52 card templates in `assets/cards/pokerth/default/` (run `uv run python scripts/fetch_pokerth_cards.py` to download them from upstream PokerTH). See `docs/calibration.md` (TODO).
 
 ## TODO — next steps to make it actually run
 
@@ -47,7 +47,7 @@ These are not done yet. Pick up here:
 ```bash
 sudo pacman -S tesseract tesseract-data-eng pokerth
 uv sync
-uv run pytest          # confirm 23 tests pass
+uv run python -m pytest   # 76 tests pass
 ```
 
 ### 2. Launch PokerTH and take a reference screenshot
@@ -55,10 +55,12 @@ uv run pytest          # confirm 23 tests pass
 - Set a fixed window size you'll reuse (e.g. 1920×1080 fullscreen).
 - Take a screenshot showing: hero cards visible, full board area, pot label, hero stack label, each villain seat, and the action buttons. Save it to `assets/screenshots/reference_1920x1080.png` (gitignored).
 
-### 3. Generate the 52 card templates
-Per-card crops of suit+rank glyphs from PokerTH. Two options:
-- **Manual**: play hand-by-hand, screenshot each unique card as it appears, crop ROI, save as `assets/card_templates/As.png`, `Td.png`, ... (52 files, naming = `<RankSuit>.png`, e.g. `Kh.png`).
-- **Semi-auto** (later): write `scripts/extract_templates.py` that takes a reference screenshot + hand history and crops automatically.
+### 3. Download the 52 card templates
+PokerTH is GPL and ships its card assets on GitHub. One-liner:
+```bash
+uv run python scripts/fetch_pokerth_cards.py
+```
+Pulls 3 decks (`default`, `default4c`, `default_800x480`) into `assets/cards/pokerth/<deck>/`, renaming each PNG to `<RankSuit>.png` (e.g. `As.png`, `Td.png`). Source: https://github.com/pokerth/pokerth/tree/stable/data/gfx/cards.
 
 ### 4. Implement `scripts/calibrate.py`
 Currently a stub. Needs:
