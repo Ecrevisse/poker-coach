@@ -25,8 +25,15 @@ def test_ev_fold():
 
 
 def test_ev_call_positive():
-    # 60% equity, pot 100, to_call 50 -> 0.6*150 - 0.4*50 = 90 - 20 = 70
-    assert ev_call(0.6, 100, 50) == 70.0
+    # 60% equity, effective_pot 100 (includes villain's bet already), to_call 50
+    # Win: take effective_pot (net of own call) = 100. Lose: lose 50.
+    # EV = 0.6*100 - 0.4*50 = 60 - 20 = 40
+    assert ev_call(0.6, 100, 50) == 40.0
+
+
+def test_ev_call_break_even_matches_pot_odds():
+    eq = pot_odds(50, 100)
+    assert abs(ev_call(eq, 100, 50)) < 1e-9
 
 
 def test_required_equity_matches_pot_odds():
@@ -45,7 +52,7 @@ def test_equity_72o_vs_aks_unfavored():
         _h("7d 2c"),
         [],
         n_villains=1,
-        villain_range=[(Card.from_str("As"), Card.from_str("Ks"))],
+        villain_ranges=[[(Card.from_str("As"), Card.from_str("Ks"))]],
         iterations=2000,
         rng=rng,
     )

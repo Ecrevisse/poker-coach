@@ -28,16 +28,30 @@ _CARDBACK_STD_MIN = 38.0
 _CARDBACK_HUE_MIN = 70
 _CARDBACK_HUE_MAX = 105
 
-# Position order clockwise from button for 6-max (typical PokerTH default).
-# index 0 = BTN, 1 = SB, 2 = BB, 3 = UTG, 4 = MP, 5 = CO
-_POSITION_RING_6: tuple[Position, ...] = (
-    Position.BTN, Position.SB, Position.BB, Position.UTG, Position.MP, Position.CO,
-)
-# 9-max: BTN, SB, BB, UTG, UTG+1, UTG+2, MP, HJ, CO  — collapse to existing enum.
-_POSITION_RING_9: tuple[Position, ...] = (
-    Position.BTN, Position.SB, Position.BB, Position.UTG, Position.UTG, Position.MP,
-    Position.MP, Position.CO, Position.CO,
-)
+# Position ring clockwise from BTN. We only have 6 Position enum values so we
+# collapse early-position seats to UTG, late to CO. Generated per active count.
+_BASE_RING = (Position.BTN, Position.SB, Position.BB)
+
+
+def _position_ring(n: int) -> tuple[Position, ...]:
+    """Clockwise positions for `n` active seats starting from BTN."""
+    if n <= 0:
+        return ()
+    if n <= 3:
+        return _BASE_RING[:n]
+    # Slots after BB are distributed: UTG... then MP... then CO (to fill).
+    remaining = n - 3
+    # Pattern: as we approach BTN going clockwise, we get late positions.
+    # Allocate evenly: 1/3 UTG, 1/3 MP, 1/3 CO (rounded).
+    n_co = max(1, remaining // 3)
+    n_mp = max(1, remaining // 3) if remaining >= 2 else 0
+    n_utg = remaining - n_co - n_mp
+    return (
+        _BASE_RING
+        + (Position.UTG,) * n_utg
+        + (Position.MP,) * n_mp
+        + (Position.CO,) * n_co
+    )
 
 
 def _load_template(path: str) -> tuple[np.ndarray, np.ndarray | None] | None:
@@ -151,7 +165,7 @@ class SeatReader:
             c1 = self.cards.recognize(_safe_crop(frame, hero.cards[1]))
             if c1:
                 gs.hero_cards.append(c1)
-        hero_bet = TextOCR.read_int(_safe_crop(frame, hero.current_bet))
+        gs.hero_current_bet = TextOCR.read_int(_safe_crop(frame, hero.current_bet))
 
         # Villains + dealer detection
         roles: dict[str, str] = {}  # seat name -> "BTN"/"SB"/"BB"
@@ -169,10 +183,10 @@ class SeatReader:
             active_seats = [s for s in resolved.seats if s.name == "hero" or self._has_cards(_safe_crop(frame, s.cards[0]))]
             n_active = len(active_seats)
             active_names = [s.name for s in active_seats]
-            ring = _POSITION_RING_6 if n_active <= 6 else _POSITION_RING_9
+            ring = _position_ring(n_active)
             if btn_name in active_names:
                 start = active_names.index(btn_name)
-                for i, pos in enumerate(ring[:n_active]):
+                for i, pos in enumerate(ring):
                     positions[active_names[(start + i) % n_active]] = pos
 
         gs.hero_position = positions.get("hero", Position.BTN)
@@ -199,5 +213,5 @@ class SeatReader:
 
         # to_call = max villain bet - hero's own bet on this street
         max_villain_bet = max((v.last_bet for v in gs.villains if v.in_hand), default=0)
-        gs.to_call = max(0, max_villain_bet - hero_bet)
+        gs.to_call = max(0, max_villain_bet - gs.hero_current_bet)
         return gs
