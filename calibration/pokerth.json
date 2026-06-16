@@ -3,120 +3,246 @@
     "w": 1090,
     "h": 962
   },
-  "hero_cards": [
+  "layout_bottom": {
+    "stack": {
+      "dx": 65,
+      "dy": 98,
+      "w": 100,
+      "h": 16
+    },
+    "current_bet": {
+      "dx": 76,
+      "dy": 4,
+      "w": 102,
+      "h": 17
+    },
+    "cards": [
+      {
+        "dx": 84,
+        "dy": 22,
+        "w": 26,
+        "h": 76
+      },
+      {
+        "dx": 108,
+        "dy": 22,
+        "w": 49,
+        "h": 75
+      }
+    ],
+    "action_label": {
+      "dx": 85,
+      "dy": 67,
+      "w": 71,
+      "h": 30
+    },
+    "chip_marker": {
+      "dx": 6,
+      "dy": 4,
+      "w": 69,
+      "h": 61
+    }
+  },
+  "layout_top": {
+    "stack": {
+      "dx": 65,
+      "dy": 20,
+      "w": 101,
+      "h": 13
+    },
+    "current_bet": {
+      "dx": 81,
+      "dy": 112,
+      "w": 94,
+      "h": 19
+    },
+    "cards": [
+      {
+        "dx": 86,
+        "dy": 34,
+        "w": 25,
+        "h": 76
+      },
+      {
+        "dx": 111,
+        "dy": 34,
+        "w": 46,
+        "h": 75
+      }
+    ],
+    "action_label": {
+      "dx": 88,
+      "dy": 77,
+      "w": 69,
+      "h": 32
+    },
+    "chip_marker": {
+      "dx": 6,
+      "dy": 76,
+      "w": 69,
+      "h": 55
+    }
+  },
+  "seats": [
     {
-      "x": 534,
-      "y": 634,
-      "w": 26,
-      "h": 76
+      "name": "hero",
+      "layout": "bottom",
+      "rect": {
+        "anchor": "window_center",
+        "dx": -94,
+        "dy": 612,
+        "w": 183,
+        "h": 133
+      }
     },
     {
-      "x": 558,
-      "y": 636,
-      "w": 49,
-      "h": 72
+      "name": "v0",
+      "layout": "bottom",
+      "rect": {
+        "anchor": "window_center",
+        "dx": -318,
+        "dy": 612,
+        "w": 183,
+        "h": 133
+      }
+    },
+    {
+      "name": "v1",
+      "layout": "bottom",
+      "rect": {
+        "anchor": "window_center",
+        "dx": -543,
+        "dy": 468,
+        "w": 183,
+        "h": 133
+      }
+    },
+    {
+      "name": "v2",
+      "layout": "top",
+      "rect": {
+        "anchor": "window_center",
+        "dx": -539,
+        "dy": 178,
+        "w": 185,
+        "h": 133
+      }
+    },
+    {
+      "name": "v3",
+      "layout": "top",
+      "rect": {
+        "anchor": "window_center",
+        "dx": -319,
+        "dy": 30,
+        "w": 185,
+        "h": 133
+      }
+    },
+    {
+      "name": "v4",
+      "layout": "top",
+      "rect": {
+        "anchor": "window_center",
+        "dx": -94,
+        "dy": 29,
+        "w": 185,
+        "h": 133
+      }
+    },
+    {
+      "name": "v5",
+      "layout": "top",
+      "rect": {
+        "anchor": "window_center",
+        "dx": 128,
+        "dy": 29,
+        "w": 185,
+        "h": 133
+      }
+    },
+    {
+      "name": "v6",
+      "layout": "top",
+      "rect": {
+        "anchor": "window_center",
+        "dx": 355,
+        "dy": 178,
+        "w": 185,
+        "h": 133
+      }
+    },
+    {
+      "name": "v7",
+      "layout": "bottom",
+      "rect": {
+        "anchor": "window_center",
+        "dx": 355,
+        "dy": 463,
+        "w": 183,
+        "h": 133
+      }
+    },
+    {
+      "name": "v8",
+      "layout": "bottom",
+      "rect": {
+        "anchor": "window_center",
+        "dx": 131,
+        "dy": 612,
+        "w": 183,
+        "h": 133
+      }
     }
   ],
   "board": [
     {
-      "x": 421,
-      "y": 348,
-      "w": 53,
-      "h": 80
-    },
-    {
-      "x": 475,
-      "y": 350,
-      "w": 53,
-      "h": 76
-    },
-    {
-      "x": 531,
-      "y": 349,
-      "w": 55,
-      "h": 79
-    },
-    {
-      "x": 586,
-      "y": 349,
+      "anchor": "window_center",
+      "dx": -123,
+      "dy": 345,
       "w": 54,
-      "h": 78
+      "h": 83
     },
     {
-      "x": 640,
-      "y": 350,
+      "anchor": "window_center",
+      "dx": -69,
+      "dy": 346,
+      "w": 56,
+      "h": 83
+    },
+    {
+      "anchor": "window_center",
+      "dx": -15,
+      "dy": 345,
+      "w": 56,
+      "h": 85
+    },
+    {
+      "anchor": "window_center",
+      "dx": 41,
+      "dy": 347,
       "w": 55,
-      "h": 76
+      "h": 82
+    },
+    {
+      "anchor": "window_center",
+      "dx": 95,
+      "dy": 346,
+      "w": 57,
+      "h": 82
     }
   ],
   "pot": {
-    "x": 318,
-    "y": 378,
-    "w": 72,
-    "h": 14
-  },
-  "hero_stack": {
-    "x": 518,
-    "y": 712,
-    "w": 84,
-    "h": 12
-  },
-  "to_call": {
-    "x": 499,
-    "y": 885,
-    "w": 95,
+    "anchor": "window_center",
+    "dx": -231,
+    "dy": 372,
+    "w": 98,
     "h": 23
   },
-  "villains": [
-    {
-      "seat": 0,
-      "stack": {
-        "x": 292,
-        "y": 711,
-        "w": 87,
-        "h": 15
-      },
-      "position": "BTN"
-    },
-    {
-      "seat": 1,
-      "stack": {
-        "x": 66,
-        "y": 562,
-        "w": 89,
-        "h": 18
-      },
-      "position": "BTN"
-    },
-    {
-      "seat": 2,
-      "stack": {
-        "x": 64,
-        "y": 196,
-        "w": 88,
-        "h": 14
-      },
-      "position": "BTN"
-    },
-    {
-      "seat": 3,
-      "stack": {
-        "x": 288,
-        "y": 49,
-        "w": 92,
-        "h": 15
-      },
-      "position": "BTN"
-    },
-    {
-      "seat": 4,
-      "stack": {
-        "x": 514,
-        "y": 49,
-        "w": 93,
-        "h": 15
-      },
-      "position": "BTN"
-    }
-  ]
+  "templates": {
+    "card_back": "assets/pokerth/templates/card_back.png",
+    "chip_dealer": "assets/pokerth/templates/dealerPuck.png",
+    "chip_sb": "assets/pokerth/templates/smallblindPuck.png",
+    "chip_bb": "assets/pokerth/templates/bigblindPuck.png"
+  }
 }

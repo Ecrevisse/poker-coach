@@ -33,6 +33,7 @@ def main() -> None:
     )
     ap.add_argument("--interval", type=float, default=0.5)
     ap.add_argument("--iterations", type=int, default=5000)
+    ap.add_argument("--once", action="store_true", help="Single parse + advise, then exit.")
     args = ap.parse_args()
 
     calib_path = Path(args.calibration)
@@ -48,6 +49,12 @@ def main() -> None:
 
     capture = ScreenCapture()
     parser = StateParser(calib, cards, capture)
+
+    if args.once:
+        gs = parser.parse()
+        adv = advise(gs, iterations=args.iterations) if gs.hero_cards else None
+        console.print(render(gs, adv) if adv else "[yellow]No hero cards detected.[/]")
+        return
 
     last_hash: str | None = None
     with Live(refresh_per_second=4, console=console) as live:

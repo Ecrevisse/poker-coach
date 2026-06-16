@@ -1,4 +1,4 @@
-"""Calibration: ROI scaling + window translation."""
+"""Calibration: seat-rect + layout resolution."""
 
 from __future__ import annotations
 
@@ -7,58 +7,108 @@ from pathlib import Path
 
 import pytest
 
-from poker_coach.calibration import ROI, Calibration
+from poker_coach.calibration import (
+    ROI,
+    AnchoredROI,
+    Calibration,
+    Layout,
+    Offset,
+    resolve,
+)
+
+
+def test_anchored_roi_resolves() -> None:
+    r = AnchoredROI(dx=-100, dy=400, w=53, h=80)
+    assert r.resolve(window_w=1000) == ROI(x=400, y=400, w=53, h=80)
+
+
+def test_offset_resolves_against_parent() -> None:
+    parent = ROI(x=500, y=600, w=200, h=120)
+    o = Offset(dx=10, dy=20, w=40, h=70)
+    assert o.resolve(parent) == ROI(x=510, y=620, w=40, h=70)
 
 
 @pytest.fixture
-def calib_file(tmp_path: Path) -> Path:
-    data = {
-        "reference_size": {"w": 1280, "h": 720},
-        "hero_cards": [{"x": 100, "y": 200, "w": 60, "h": 90}],
-        "board": [{"x": 500, "y": 300, "w": 60, "h": 90}],
-        "pot": {"x": 600, "y": 280, "w": 80, "h": 20},
-        "hero_stack": {"x": 600, "y": 600, "w": 80, "h": 20},
-        "to_call": None,
-        "villains": [{"seat": 1, "stack": {"x": 200, "y": 100, "w": 80, "h": 20}, "position": "BTN"}],
+def calib_data() -> dict:
+    layout = {
+        "stack":        {"dx": 60, "dy": 110, "w": 84, "h": 12},
+        "current_bet":  {"dx": 60, "dy": 80,  "w": 60, "h": 14},
+        "cards":        [
+            {"dx": 5,  "dy": 10, "w": 26, "h": 76},
+            {"dx": 30, "dy": 10, "w": 48, "h": 76},
+        ],
+        "action_label": {"dx": 50, "dy": 50, "w": 80, "h": 18},
+        "chip_marker":  {"dx": 100, "dy": 30, "w": 25, "h": 25},
     }
-    p = tmp_path / "calib.json"
-    p.write_text(json.dumps(data))
+    return {
+        "reference_size": {"w": 1090, "h": 962},
+        "layout_bottom": layout,
+        "layout_top": layout,  # same for simplicity
+        "seats": [
+            {"name": "hero", "layout": "bottom",
+             "rect": {"anchor": "window_center", "dx": -100, "dy": 600, "w": 200, "h": 130}},
+            {"name": "v0", "layout": "bottom",
+             "rect": {"anchor": "window_center", "dx": -300, "dy": 600, "w": 200, "h": 130}},
+            {"name": "v3", "layout": "top",
+             "rect": {"anchor": "window_center", "dx": 0,    "dy": 30,  "w": 200, "h": 130}},
+        ],
+        "board": [
+            {"anchor": "window_center", "dx": -130, "dy": 348, "w": 53, "h": 80},
+        ],
+        "pot": {"anchor": "window_center", "dx": -200, "dy": 378, "w": 72, "h": 14},
+        "templates": {
+            "card_back": "x.png",
+            "chip_dealer": "d.png",
+            "chip_sb": "sb.png",
+            "chip_bb": "bb.png",
+        },
+    }
+
+
+@pytest.fixture
+def calib_file(tmp_path: Path, calib_data: dict) -> Path:
+    p = tmp_path / "c.json"
+    p.write_text(json.dumps(calib_data))
     return p
 
 
-def test_loads_reference_size(calib_file: Path) -> None:
+def test_loads_two_layouts(calib_file: Path) -> None:
     c = Calibration.load(calib_file)
-    assert c.reference_size.w == 1280
-    assert c.reference_size.h == 720
+    assert "bottom" in c.layouts
+    assert "top" in c.layouts
 
 
-def test_scale_position_keeps_size_fixed() -> None:
-    r = ROI(x=100, y=200, w=60, h=90)
-    scaled = r.scale_position(2.0, 1.5)
-    assert scaled == ROI(x=200, y=300, w=60, h=90)
-
-
-def test_resolved_scales_and_translates(calib_file: Path) -> None:
+def test_resolve_seats_apply_layout(calib_file: Path) -> None:
     c = Calibration.load(calib_file)
-    # current window 1920x1080 at monitor offset (50, 30)
-    r = c.resolved(current_w=1920, current_h=1080, win_x=50, win_y=30)
-    assert r.hero_cards[0].x == int(100 * 1920 / 1280) + 50  # 150 + 50 = 200
-    assert r.hero_cards[0].y == int(200 * 1080 / 720) + 30   # 300 + 30 = 330
-    assert r.hero_cards[0].w == 60  # unchanged
-    assert r.hero_cards[0].h == 90
+    r = resolve(c, window_w=1200, window_h=962)
+    hero = r.hero
+    # window_center=600, hero rect dx=-100 -> x=500, dy=600 -> y=600
+    assert hero.rect == ROI(x=500, y=600, w=200, h=130)
+    # stack offset (60, 110) inside hero rect
+    assert hero.stack == ROI(x=560, y=710, w=84, h=12)
+    # cards[0] offset (5, 10)
+    assert hero.cards[0] == ROI(x=505, y=610, w=26, h=76)
+    # chip_marker offset (100, 30)
+    assert hero.chip_marker == ROI(x=600, y=630, w=25, h=25)
 
 
-def test_resolved_villain_stack(calib_file: Path) -> None:
+def test_resize_shifts_all_seats_by_half_width(calib_file: Path) -> None:
     c = Calibration.load(calib_file)
-    r = c.resolved(current_w=2560, current_h=1440, win_x=0, win_y=0)
-    v = r.villains[0]["stack"]
-    assert v["x"] == int(200 * 2560 / 1280)  # 400
-    assert v["y"] == int(100 * 1440 / 720)   # 200
-    assert v["w"] == 80
-    assert v["h"] == 20
+    r1 = resolve(c, 1090, 962)
+    r2 = resolve(c, 1500, 962)
+    diff = (1500 - 1090) // 2
+    assert r2.hero.rect.x - r1.hero.rect.x == diff
+    assert r2.hero.stack.x - r1.hero.stack.x == diff
+    assert r2.hero.cards[0].x - r1.hero.cards[0].x == diff
+    assert r2.board[0].x - r1.board[0].x == diff
+    # y unchanged
+    assert r1.hero.rect.y == r2.hero.rect.y
+    assert r1.hero.stack.y == r2.hero.stack.y
 
 
-def test_resolved_identity_when_same_size(calib_file: Path) -> None:
+def test_by_name_lookup(calib_file: Path) -> None:
     c = Calibration.load(calib_file)
-    r = c.resolved(current_w=1280, current_h=720, win_x=0, win_y=0)
-    assert r.pot == ROI(x=600, y=280, w=80, h=20)
+    r = resolve(c, 1200, 962)
+    # window_center 600, v0 dx -300 -> x=300, w=200, h=130
+    assert r.by_name("v0").rect == ROI(x=300, y=600, w=200, h=130)
+    assert r.by_name("v3").layout == "top"
