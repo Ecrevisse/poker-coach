@@ -23,15 +23,14 @@ def main() -> None:
     ap = argparse.ArgumentParser(prog="poker-coach")
     ap.add_argument(
         "--calibration", "-c",
-        default="calibration/pokerth_1920x1080.json",
+        default="calibration/pokerth.json",
         help="Path to ROI calibration JSON.",
     )
     ap.add_argument(
         "--templates", "-t",
-        default="assets/cards/pokerth/default",
+        default="assets/cards/pokerth/default_800x480",
         help="Directory of 52 card template PNGs.",
     )
-    ap.add_argument("--monitor", "-m", type=int, default=1)
     ap.add_argument("--interval", type=float, default=0.5)
     ap.add_argument("--iterations", type=int, default=5000)
     args = ap.parse_args()
@@ -47,7 +46,7 @@ def main() -> None:
     if not cards.templates:
         console.print(f"[yellow]Warning:[/] no card templates found in {args.templates}")
 
-    capture = ScreenCapture(monitor_idx=args.monitor)
+    capture = ScreenCapture()
     parser = StateParser(calib, cards, capture)
 
     last_hash: str | None = None

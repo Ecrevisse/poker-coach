@@ -64,13 +64,13 @@ Pulls 3 decks (`default`, `default4c`, `default_800x480`) into `assets/cards/pok
 
 ### 4. Implement `scripts/calibrate.py`
 Currently a stub. Needs:
-- Load reference screenshot.
-- For each named ROI (`hero_cards[0]`, `hero_cards[1]`, `board[0..4]`, `pot`, `hero_stack`, `to_call`, each `villains[i].stack`), let user click top-left + bottom-right with matplotlib `RectangleSelector` (or just `ginput`).
-- Write `calibration/pokerth_<W>x<H>.json` matching the schema in `src/poker_coach/calibration.py` (`Calibration.load`).
+- Detect PokerTH window via `WindowLocator` and grab a screenshot of just that window (record its size as `reference_size`).
+- For each named ROI (`hero_cards[0..1]`, `board[0..4]`, `pot`, `hero_stack`, `to_call`, each `villains[i].stack`), let user draw the rectangle (matplotlib `RectangleSelector` or `ginput`). Coordinates are **relative to the PokerTH window**, not the monitor.
+- Write `calibration/pokerth.json` matching the schema in `src/poker_coach/calibration.py` (`Calibration.load`). Single file works at any window size: ROI positions scale with `current_window/reference_size`, while ROI widths/heights stay fixed (card sprites and digit fonts do not resize with the window).
 
 ### 5. First end-to-end smoke test
 ```bash
-uv run poker-coach --calibration calibration/pokerth_1920x1080.json
+uv run poker-coach --calibration calibration/pokerth.json
 ```
 Expected: launches, captures screen, prints a `rich` panel with hero cards, equity, pot odds, EV, decision. If OCR misreads, tune `_MATCH_THRESHOLD` in `src/poker_coach/ocr.py` and tesseract `--psm` config.
 

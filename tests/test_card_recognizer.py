@@ -10,7 +10,7 @@ import pytest
 from poker_coach.cards import Card, Rank, Suit
 from poker_coach.ocr import CardRecognizer
 
-TEMPLATES = Path(__file__).resolve().parent.parent / "assets" / "cards" / "pokerth" / "default"
+TEMPLATES = Path(__file__).resolve().parent.parent / "assets" / "cards" / "pokerth" / "default_800x480"
 
 
 @pytest.fixture(scope="module")
