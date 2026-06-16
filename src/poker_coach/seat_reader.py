@@ -12,11 +12,10 @@ from pathlib import Path
 import cv2
 import numpy as np
 
-from .calibration import Calibration, ResolvedCalibration, ResolvedSeat
+from .calibration import Calibration, ResolvedCalibration
 from .cards import Action, Position
 from .ocr import CardRecognizer, TextOCR
 from .state import GameState, Villain
-
 
 _CHIP_THRESHOLD = 0.45
 _TEMPLATE_SCALES = (0.75, 0.9, 1.0, 1.15, 1.3)

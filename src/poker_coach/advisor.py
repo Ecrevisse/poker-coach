@@ -6,7 +6,7 @@ from dataclasses import dataclass
 
 from .cards import Action, Card, Street
 from .engine import equity_monte_carlo, ev_call, ev_fold, ev_raise, pot_odds
-from .ranges import open_range
+from .ranges import cold_call_range, limp_range, open_range
 from .state import GameState
 
 # Per-villain fold equity vs a pot-sized aggressive bet, by street.
@@ -35,11 +35,41 @@ class Advice:
 
 
 def _villain_ranges(gs: GameState) -> list[list[tuple[Card, Card]] | None]:
-    """Per-active-villain estimated combo range based on their position."""
+    """Per-active-villain estimated combo range, factoring in their action.
+
+    - Aggressor (highest bet > BB): position open_range (the raiser).
+    - Caller (matched the raise, not aggressor): cold_call_range (open minus
+      premium 3-betting hands).
+    - Limper (only put in the BB): limp_range (no premiums, suited connectors
+      and small pairs).
+    """
+    if gs.street != Street.PREFLOP:
+        # Post-flop: action history is what matters but we don't model it yet.
+        # Use position open_range as a coarse estimate.
+        return [
+            (open_range(v.position) or None) for v in gs.active_villains
+        ]
+
+    bb = gs.big_blind
+    active = gs.active_villains
+    max_bet = max((v.last_bet for v in active), default=0)
+    aggressor: int | None = None
+    if max_bet > bb:
+        # Pick the first villain with max_bet as aggressor (heuristic).
+        for i, v in enumerate(active):
+            if v.last_bet == max_bet:
+                aggressor = i
+                break
+
     ranges: list[list[tuple[Card, Card]] | None] = []
-    for v in gs.active_villains:
-        combos = open_range(v.position)
-        ranges.append(combos if combos else None)
+    for i, v in enumerate(active):
+        if v.last_bet > bb and i == aggressor:
+            r = open_range(v.position)
+        elif v.last_bet == max_bet and max_bet > bb:
+            r = cold_call_range(v.position)
+        else:
+            r = limp_range()
+        ranges.append(r if r else None)
     return ranges
 
 

@@ -104,7 +104,37 @@ def open_range(position: Position) -> list[tuple[Card, Card]]:
     return expand(PREFLOP_OPEN_RANGES.get(position, set()))
 
 
-__all__ = ["expand", "open_range", "PREFLOP_OPEN_RANGES"]
+# Hands that typically 3-bet rather than flat-call. A caller's range should
+# exclude these (they would have re-raised instead of calling).
+_THREEBET_HANDS = {"JJ", "QQ", "KK", "AA", "AKs", "AKo"}
+
+
+def cold_call_range(position: Position) -> list[tuple[Card, Card]]:
+    """Range a villain calls a raise with (open_range minus 3-betting hands)."""
+    combos = expand(PREFLOP_OPEN_RANGES.get(position, set()))
+    return [c for c in combos if _combo_code(c[0], c[1]) not in _THREEBET_HANDS]
+
+
+# Limp range: wide, weak holdings (small/medium pairs, suited connectors,
+# suited aces). No premiums (they would raise).
+_LIMP_RANGE_TOKENS = {
+    "22", "33", "44", "55", "66", "77", "88", "99",
+    "A2s", "A3s", "A4s", "A5s", "A6s", "A7s", "A8s", "A9s",
+    "T9s", "98s", "87s", "76s", "65s", "54s", "43s",
+    "J9s", "JTs", "T8s", "97s", "86s", "75s",
+    "QJs", "KJs", "QTs", "KTs",
+    "JTo", "QJo", "KJo", "QTo", "KTo", "T9o", "98o", "87o", "76o",
+    "A9o", "A8o", "A7o", "A6o", "A5o", "A4o", "A3o", "A2o",
+}
+
+
+def limp_range() -> list[tuple[Card, Card]]:
+    return expand(_LIMP_RANGE_TOKENS)
+
+
+__all__ = [
+    "expand", "open_range", "cold_call_range", "limp_range", "PREFLOP_OPEN_RANGES",
+]
 
 
 # Silence unused-import warning while keeping symbols available for callers.

@@ -7,6 +7,7 @@ Mapping (verified visually): id // 13 = suit in [d, h, s, c]; id % 13 = rank in 
 
 from __future__ import annotations
 
+import contextlib
 import sys
 import urllib.request
 from pathlib import Path
@@ -37,10 +38,8 @@ def download_deck(deck: str) -> None:
     for i in range(52):
         fetch(f"{REPO_RAW}/{deck}/{i}.png", out / f"{card_name(i)}.png")
     for extra in ("flipside.png", "preview.png"):
-        try:
+        with contextlib.suppress(Exception):
             fetch(f"{REPO_RAW}/{deck}/{extra}", out / extra)
-        except Exception:
-            pass
 
 
 def main() -> int:

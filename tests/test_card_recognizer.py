@@ -16,7 +16,7 @@ TEMPLATES = Path(__file__).resolve().parent.parent / "assets" / "cards" / "poker
 @pytest.fixture(scope="module")
 def recognizer() -> CardRecognizer:
     if not TEMPLATES.exists():
-        pytest.skip(f"Templates missing: run scripts/fetch_pokerth_cards.py")
+        pytest.skip("Templates missing: run scripts/fetch_pokerth_cards.py")
     return CardRecognizer(TEMPLATES)
 
 

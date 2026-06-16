@@ -74,10 +74,12 @@ class CardRecognizer:
             return None
         # Reduced margin: same-rank-diff-suit (e.g. 5s vs 5c) is acceptable
         # since at this resolution black suits are visually indistinguishable.
-        if len(scores) > 1 and scores[0][1][0] != scores[1][1][0]:
-            # Different ranks at top -> require margin
-            if scores[0][0] - scores[1][0] < _MATCH_MARGIN:
-                return None
+        if (
+            len(scores) > 1
+            and scores[0][1][0] != scores[1][1][0]
+            and scores[0][0] - scores[1][0] < _MATCH_MARGIN
+        ):
+            return None
         return Card.from_str(scores[0][1])
 
     def recognize(self, card_img: np.ndarray) -> Card | None:
@@ -116,9 +118,12 @@ class CardRecognizer:
             return None
         ref_w = next(iter(self.templates.values())).shape[1]
         cw = full.shape[1]
-        if cw < 0.7 * ref_w and len(ranked) > 1:
-            if ranked[0][0] - ranked[1][0] < _MATCH_MARGIN:
-                return None
+        if (
+            cw < 0.7 * ref_w
+            and len(ranked) > 1
+            and ranked[0][0] - ranked[1][0] < _MATCH_MARGIN
+        ):
+            return None
         return Card.from_str(ranked[0][1])
 
 

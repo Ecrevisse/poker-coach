@@ -11,7 +11,6 @@ from poker_coach.calibration import (
     ROI,
     AnchoredROI,
     Calibration,
-    Layout,
     Offset,
     resolve,
 )

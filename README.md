@@ -1,102 +1,163 @@
 # poker-coach
 
-Live Texas Hold'em coaching assistant. Watches a local PokerTH game via screen capture, reads cards/pot/stacks with OCR, and prints live equity, pot odds, EV per action, and a recommended decision with explanation — so you can learn the math and logic of NLHE while you play.
-
-## Status
-
-Early WIP. Built incrementally:
-
-1. Card/state primitives + poker engine (equity, pot odds, EV)
-2. Screen capture + card template matching + numeric OCR
-3. Game-state parser, range model, advisor
-4. Terminal UI live loop
-5. (later) GUI overlay, vision-LLM fallback
+Live Texas Hold'em coaching assistant. Watches a local PokerTH game via screen capture, reads cards/pot/stacks/actions, and prints live equity, pot odds, EV per action, and a recommended decision with explanation — so you can learn the math and logic of NLHE while you play.
 
 ## Stack
 
 - Python 3.12, managed with [uv](https://docs.astral.sh/uv/)
-- `treys` — fast hand evaluator
-- `mss` + `opencv-python` — screen capture and template matching
-- `pytesseract` — numeric OCR (pot, stacks)
+- `treys` — hand evaluator
+- `grim` (Hyprland/Wayland) — screenshot
+- `hyprctl` — locate the PokerTH window
+- `opencv-python` — template matching (cards + dealer/SB/BB pucks)
+- `pytesseract` — numeric OCR (pot, stacks, bets)
+- `matplotlib` — interactive ROI calibration UI
 - `rich` — terminal UI
-- `pytest`, `ruff`, `mypy` — quality
 
 ## Install
 
 ```bash
-# system deps (Arch)
-sudo pacman -S tesseract tesseract-data-eng pokerth
+# Arch system deps
+sudo pacman -S tesseract tesseract-data-eng pokerth grim
 
-# project
+# Python deps
 uv sync
 ```
 
+## First-time setup
+
+1. **Launch PokerTH**, start a single-player game vs bots, set whatever window size you like, deal a hand so cards + blinds are visible. Make sure the PokerTH window is on your active workspace and not occluded — `grim` only captures what's on screen.
+
+2. **Calibrate ROIs** (one-shot, robust to later window resizes since coords are anchored to the window center):
+
+   ```bash
+   uv run python scripts/calibrate.py --villains 9 --top-sample v3
+   ```
+
+   Three phases:
+   - *Phase 1* — full window screenshot, you draw the bounding rect for hero + 9 villains + 5 board cards + pot (12 rectangles).
+   - *Phase 2* — hero rect is cropped/zoomed, you draw the 6 sub-ROIs (stack, current_bet, cards[0..1], action_label, chip_marker) for the **bottom** layout.
+   - *Phase 3* — same inside a top-row villain (default `v3`) for the **top** layout.
+
+   Output: `calibration/pokerth.json`. PokerTH card and puck templates are already in `assets/`.
+
+3. **Verify** what poker-coach sees:
+
+   ```bash
+   uv run python scripts/debug_capture.py
+   # → annotated PNG at /tmp/poker_coach_debug/annotated.png
+   ```
+
+   Each seat row shows its detected stack/bet/chip role (D/SB/BB)/in_hand. Hero row shows recognised cards. If anything is wrong, recalibrate just that ROI:
+
+   ```bash
+   uv run python scripts/calibrate.py --only "seats.v2,pot"
+   ```
+
 ## Run
+
+One-shot — read the table state once and print the advice:
+
+```bash
+uv run poker-coach --once
+```
+
+Continuous loop (re-parses every 0.5 s and updates when the state changes):
 
 ```bash
 uv run poker-coach
 ```
 
-Requires a calibration JSON for your PokerTH window resolution in `calibration/` and 52 card templates in `assets/cards/pokerth/default/` (run `uv run python scripts/fetch_pokerth_cards.py` to download them from upstream PokerTH). See `docs/calibration.md` (TODO).
+## Reading the TUI
 
-## TODO — next steps to make it actually run
+The panel looks like this:
 
-These are not done yet. Pick up here:
-
-### 1. Install system deps
-```bash
-sudo pacman -S tesseract tesseract-data-eng pokerth
-uv sync
-uv run python -m pytest   # 76 tests pass
+```
+┌──────────────────────────────────────────────────────────┐
+│ Hero        │ As Qs  (UTG)                               │
+│ Board       │ Td 9s 2c  (flop)                           │
+│ Pot / Eff   │ $100 / $260                                │
+│ To call     │ $40                                        │
+│ Hero stack  │ $4860  (SPR 18.7)                          │
+│ Active vs   │ 4                                          │
+│ Equity      │ 38.2%                                      │
+│ Pot odds    │ 13.3%  (need)                              │
+│ EV fold     │ +0.0                                       │
+│ EV call     │ +75.3                                      │
+│ EV raise    │ +148.6                                     │
+│ DECISION    │ RAISE                                      │
+└──────────────────────────────────────────────────────────┘
 ```
 
-### 2. Launch PokerTH and take a reference screenshot
-- Start PokerTH, create a local game vs AI bots (max difficulty).
-- Set a fixed window size you'll reuse (e.g. 1920×1080 fullscreen).
-- Take a screenshot showing: hero cards visible, full board area, pot label, hero stack label, each villain seat, and the action buttons. Save it to `assets/screenshots/reference_1920x1080.png` (gitignored).
+What each row means and how to act on it:
 
-### 3. Download the 52 card templates
-PokerTH is GPL and ships its card assets on GitHub. One-liner:
-```bash
-uv run python scripts/fetch_pokerth_cards.py
-```
-Pulls 3 decks (`default`, `default4c`, `default_800x480`) into `assets/cards/pokerth/<deck>/`, renaming each PNG to `<RankSuit>.png` (e.g. `As.png`, `Td.png`). Source: https://github.com/pokerth/pokerth/tree/stable/data/gfx/cards.
+| Field        | What it is | How to read it |
+|--------------|-----------|----------------|
+| **Hero**     | Your hole cards + your detected position. | Position matters: same hand plays differently UTG vs BTN. |
+| **Board**    | Community cards + current street. | Drives equity. Wet boards (flush/straight draws) help drawing hands; dry boards favour made hands. |
+| **Pot / Eff** | `Pot` = chips already swept into the middle. `Eff` (effective pot) = pot + everyone's current-street bets + your own current bet. | **Use `Eff` for all decisions.** It's what you're actually fighting for. |
+| **To call**  | Extra chips you must add to stay in the hand. | If 0, you can check for free. Otherwise the price of seeing the next card. |
+| **Hero stack** | Chips you have left + SPR (stack-to-pot ratio = `hero_stack / Eff`). | SPR < 3: committed; raises usually mean all-in.  SPR 3–10: standard. SPR > 10: deep, lots of room to play postflop. |
+| **Active vs** | Number of villains still in the hand. | Equity drops fast multi-way. AQ heads-up = 64%; AQ vs 6 villains = ~22%. |
+| **Equity**   | % chance you win at showdown if all cards are dealt out. Computed by Monte Carlo: 5000 simulations, each villain sampled from their estimated range (open/cold-call/limp depending on their action and position). | This is your *raw winning probability*. Compare with pot odds. |
+| **Pot odds (need)** | Break-even equity for a call: `to_call / (Eff + to_call)`. | If `Equity ≥ Pot odds`, calling is at least break-even in pure math. |
+| **EV fold**  | Always `+0`. Reference point. | You give up the pot but lose nothing. |
+| **EV call**  | Expected chip outcome of calling: `Equity × Eff − (1−Equity) × to_call`. | Positive = profitable long-term. Negative = leak. |
+| **EV raise** | Expected chip outcome of raising (sizing shown in parentheses). Accounts for fold equity (probability ALL active villains fold) plus equity if called. | Higher than EV call ⇒ raise is the better line. |
+| **DECISION** | Whichever action has the highest EV (CHECK preferred over FOLD when free). | The coach's vote. *You* still decide; use the numbers as a sanity check. |
 
-### 4. Implement `scripts/calibrate.py`
-Currently a stub. Needs:
-- Detect PokerTH window via `WindowLocator` and grab a screenshot of just that window (record its size as `reference_size`).
-- For each named ROI (`hero_cards[0..1]`, `board[0..4]`, `pot`, `hero_stack`, `to_call`, each `villains[i].stack`), let user draw the rectangle (matplotlib `RectangleSelector` or `ginput`). Coordinates are **relative to the PokerTH window**, not the monitor.
-- Write `calibration/pokerth.json` matching the schema in `src/poker_coach/calibration.py` (`Calibration.load`). Single file works at any window size: ROI positions scale with `current_window/reference_size`, while ROI widths/heights stay fixed (card sprites and digit fonts do not resize with the window).
+### Quick decision heuristics
 
-### 5. First end-to-end smoke test
-```bash
-uv run poker-coach --calibration calibration/pokerth.json
-```
-Expected: launches, captures screen, prints a `rich` panel with hero cards, equity, pot odds, EV, decision. If OCR misreads, tune `_MATCH_THRESHOLD` in `src/poker_coach/ocr.py` and tesseract `--psm` config.
+- `Equity` ≥ `Pot odds` → **at minimum CALL**. The gap is your edge per unit invested.
+- `EV raise` > `EV call` AND fold equity decent → **RAISE**. Especially on bluff-catcher boards where you can fold worse out.
+- `Equity` < `Pot odds` AND `EV raise` ≤ 0 → **FOLD**. Bleeding chips to chase is the #1 leak.
+- Multi-way (Active ≥ 4) with a marginal hand: discount equity mentally — even if call is +EV by a tiny margin, variance + reverse-implied odds eat the edge.
+- High SPR + drawing hand: don't size up huge calls; you'll lose stack quickly if you hit nothing.
+- Low SPR + made hand: the math is mostly already done — get it in.
 
-### 6. Iterate on the advisor
-- Detect betting action from the buttons area to fill `gs.to_call` and `gs.villains[i].last_bet` reliably.
-- Narrow villain ranges post-flop based on aggression (currently V1: positional open-range only).
-- Add raise sizing recommendation + EV(raise) (needs fold-equity estimate).
+### Why the coach sometimes says FOLD on a "premium" hand
 
-### 7. Push to GitHub
-```bash
-gh repo create poker-coach --private --source=. --remote=origin
-git push -u origin main
-```
+Heads-up intuition lies in multi-way pots:
 
-### 8. Later — nice-to-haves
-- Transparent GUI overlay over PokerTH (PyQt or `tkinter` `-alpha`).
-- Vision LLM fallback for card reading if template matching fails (Anthropic / OpenAI vision).
-- Hand history logger + post-session review mode.
-- Equity graph (street-by-street).
+- AQs **heads-up** ≈ 64% equity vs random → almost always a call/raise.
+- AQs **vs 6 villains** ≈ 22% equity → marginal even with no raises in front.
+- AQs **vs an UTG raiser + 3 cold-callers** → callers' ranges still include some AK/sets/Broadways that dominate AQ; equity often drops below pot odds → FOLD is correct.
+
+If the coach says FOLD and you disagree, check **Active vs** and **Equity**. The math doesn't care about feeling.
 
 ## Develop
 
 ```bash
-uv run pytest
+uv run python -m pytest        # 83 tests
 uv run ruff check .
 uv run mypy src
+```
+
+## Project layout
+
+```
+src/poker_coach/
+  cards.py         Card / Rank / Suit / Position / Action / Street primitives
+  state.py         GameState, Villain, effective_pot
+  engine.py        Equity Monte Carlo, pot odds, EV(call/raise)
+  ranges.py        Position open ranges + cold-call + limp ranges
+  advisor.py       Action-aware range estimation, multi-action EV comparison
+  capture.py       grim wrapper
+  window.py        hyprctl WindowLocator
+  calibration.py   Anchored ROI model (window_center + seat layouts)
+  seat_reader.py   Per-seat OCR + chip/card-back detection, position assignment
+  ocr.py           Card template matching (multi-scale) + numeric OCR
+  parser.py        Glue: capture → seat_reader → GameState
+  ui.py            Rich terminal renderer
+  main.py          Event loop / --once mode
+
+scripts/
+  fetch_pokerth_cards.py   Download 52 card PNGs from upstream PokerTH
+  calibrate.py             Interactive ROI calibration (3-phase + --only)
+  debug_capture.py         Visualise live capture: annotated PNG + per-ROI prints
+
+assets/
+  cards/pokerth/<deck>/    52 card PNGs per deck (default / default4c / default_800x480)
+  pokerth/templates/       D/SB/BB pucks + card_back
 ```
 
 ## Disclaimer

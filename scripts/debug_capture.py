@@ -38,8 +38,10 @@ def draw_roi(img, roi: ROI, label: str, color=(0, 255, 0), thickness=2) -> None:
 
 def safe_crop(img, roi: ROI):
     h, w = img.shape[:2]
-    x = max(0, roi.x); y = max(0, roi.y)
-    x2 = min(w, roi.x + roi.w); y2 = min(h, roi.y + roi.h)
+    x = max(0, roi.x)
+    y = max(0, roi.y)
+    x2 = min(w, roi.x + roi.w)
+    y2 = min(h, roi.y + roi.h)
     if x2 <= x or y2 <= y:
         return None
     return img[y:y2, x:x2]
